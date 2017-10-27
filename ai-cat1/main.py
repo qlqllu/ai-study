@@ -2,35 +2,50 @@ import numpy as np
 import h5py
 from PIL import Image
 import os
+import math
 
 def sigmoid(z):
   return 1/(1 + np.exp(-z))
 
 def train(x, y):
-  alpha = 0.01
-  iterations = 10
-  b = 0
+  alpha = 0.005
+  iterations = 2000
   n = x.shape[0]
   m = x.shape[1]
-  w = np.zeros((n, 1))
 
+  w = np.zeros((n, 1))
+  b = 0
+  cost = 0
   for i in range(iterations):
     z = np.dot(w.T, x) + b
     a = sigmoid(z)
-    dz = a - y
-    dw = 1 / m * np.dot(x, dz.T)
-    db = 1 / m * np.sum(dz)
+    j = 0
+    cost = -1 * (np.sum((y * np.log(a)) + ((1 - y) * (np.log(1 - a))),axis=1))/m
+    
+    if i % 100 == 0:
+      print ("Cost after iteration %i: %f" %(i, cost))
 
-    w -= alpha * dw
-    b -= alpha * db
+    dz = a - y
+    dw = np.dot(x, dz.T) / m
+    db = np.sum(dz) / m
+
+    w = w - alpha * dw
+    b = b - alpha * db
 
   return w, b
 
 def predict(w, b, x):
   z = np.dot(w.T, x) + b
   a = sigmoid(z)
+  p = np.zeros((1, x.shape[1]))
+  
+  for i in range(a.shape[1]):
+    if a[0][i] <= 0.5:
+      p[0][i] = 0
+    else:
+      p[0][i] = 1
 
-  return a
+  return p
 
 def read_train_data():
   f_train = h5py.File('train_cat.h5', 'r')
@@ -48,7 +63,7 @@ def read_train_data():
   train_set_x = train_set_x_orig.reshape(m, -1).T
   train_set_y = train_set_y_orig.reshape(1, m)
 
-  return train_set_x, train_set_y
+  return train_set_x/255, train_set_y
 
 def read_test_data():
   f_test = h5py.File('test_cat.h5', 'r')
@@ -63,12 +78,11 @@ def read_test_data():
   test_set_x = test_set_x_orig.reshape(m, -1).T
   test_set_y = test_set_y_orig.reshape(1, m)
 
-  return test_set_x, test_set_y
+  return test_set_x/255, test_set_y
 
 
 test_set_x, test_set_y = read_test_data()
 train_set_x, train_set_y = read_train_data()
-
 w, b = train(train_set_x, train_set_y)
 
 predict_train = predict(w, b, train_set_x)
@@ -85,22 +99,16 @@ def write_train_images(a):
 
   for i, data in enumerate(f['train_set_x']):
     img = Image.fromarray(data)
-    img.save(dir_path + './images_train/' + str(i) + '_' + str(a[0][i]) + '.png')
+    img.save(dir_path + './images_train/' + str(int(a[0][i])) + '_' + str(i) + '.png')
 
-# write_train_images(predict_train)
-print(predict_train)
-print('................')
-print(train_set_y)
+def write_test_images(a):
+  f = h5py.File('test_cat.h5', 'r')
 
-# print('train_set_x: ' + str(train_set_x))
-# print('train_set_x_orig.shape: ' + str(train_set_x_orig.shape))
-# print('train_set_x.shape: ' + str(train_set_x.shape))
-# print('train_set_y: ' + str(train_set_y))
-# print('train_set_y.shape: ' + str(train_set_y.shape))
-# print('w.shape: ' + str(w.shape))
-# print('z.shape: ' + str(z.shape))
-# print('a.shape: ' + str(a.shape))
-# print('dz.shape: ' + str(dz.shape))
-# print('dw.shape: ' + str(dw.shape))
-# print('db.shape: ' + str(db.shape))
+  for i, data in enumerate(f['test_set_x']):
+    img = Image.fromarray(data)
+    img.save(dir_path + './images_test/' + str(int(a[0][i])) + '_' + str(i) + '.png')
+
+write_train_images(predict_train)
+write_test_images(predict_test)
+
 
