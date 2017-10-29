@@ -3,49 +3,11 @@ import h5py
 from PIL import Image
 import os
 import math
+import sys
+import matplotlib.pyplot as plt
 
-def sigmoid(z):
-  return 1/(1 + np.exp(-z))
-
-def train(x, y):
-  alpha = 0.005
-  iterations = 2000
-  n = x.shape[0]
-  m = x.shape[1]
-
-  w = np.zeros((n, 1))
-  b = 0
-  cost = 0
-  for i in range(iterations):
-    z = np.dot(w.T, x) + b
-    a = sigmoid(z)
-    j = 0
-    cost = -1 * (np.sum((y * np.log(a)) + ((1 - y) * (np.log(1 - a))),axis=1))/m
-    
-    if i % 100 == 0:
-      print ("Cost after iteration %i: %f" %(i, cost))
-
-    dz = a - y
-    dw = np.dot(x, dz.T) / m
-    db = np.sum(dz) / m
-
-    w = w - alpha * dw
-    b = b - alpha * db
-
-  return w, b
-
-def predict(w, b, x):
-  z = np.dot(w.T, x) + b
-  a = sigmoid(z)
-  p = np.zeros((1, x.shape[1]))
-  
-  for i in range(a.shape[1]):
-    if a[0][i] <= 0.5:
-      p[0][i] = 0
-    else:
-      p[0][i] = 1
-
-  return p
+sys.path.append('.')
+import simple_model
 
 def read_train_data():
   f_train = h5py.File('train_cat.h5', 'r')
@@ -83,14 +45,23 @@ def read_test_data():
 
 test_set_x, test_set_y = read_test_data()
 train_set_x, train_set_y = read_train_data()
-w, b = train(train_set_x, train_set_y)
 
-predict_train = predict(w, b, train_set_x)
-predict_test = predict(w, b, test_set_x)
+learning_rates = [0.001, 0.0001]
+results = {}
+for i in learning_rates:
+  print('learning_rate:' + str(i))
+  results[str(i)] = simple_model.model(train_set_x, train_set_y, test_set_x, test_set_y, num_iterations = 3000, learning_rate = i)
 
-print("train accuracy: {} %".format(100 - np.mean(np.abs(predict_train - train_set_y)) * 100))
-print("test accuracy: {} %".format(100 - np.mean(np.abs(predict_test - test_set_y)) * 100))
+for i in learning_rates:
+    plt.plot(np.squeeze(results[str(i)]["costs"]), label= str(i))
 
+plt.ylabel('cost')
+plt.xlabel('iterations')
+
+legend = plt.legend(loc='upper center', shadow=True)
+frame = legend.get_frame()
+frame.set_facecolor('0.90')
+plt.show()
 
 dir_path = os.path.dirname(__file__)
 
@@ -108,7 +79,7 @@ def write_test_images(a):
     img = Image.fromarray(data)
     img.save(dir_path + './images_test/' + str(int(a[0][i])) + '_' + str(i) + '.png')
 
-write_train_images(predict_train)
-write_test_images(predict_test)
+# write_train_images(predict_train)
+# write_test_images(predict_test)
 
 
